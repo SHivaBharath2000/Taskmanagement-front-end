@@ -58,7 +58,6 @@ export default function LoginPage() {
   async function handleLogin(values: z.infer<typeof loginSchema>) {
     const result = await dispatch(loginUser(values));
     if (loginUser.fulfilled.match(result)) {
-      toast({ title: "Welcome back!", description: "You've successfully signed in." });
       router.push("/dashboard");
     }
   }

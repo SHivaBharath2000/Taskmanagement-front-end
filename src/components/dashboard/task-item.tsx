@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -27,7 +26,6 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
   const [formattedDate, setFormattedDate] = useState<string>("");
 
   useEffect(() => {
-    // Format date only on the client to prevent hydration mismatch
     setFormattedDate(
       new Date(task.updatedAt).toLocaleDateString(undefined, { 
         month: 'short', 
@@ -42,9 +40,12 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
     setToggling(true);
     try {
       await dispatch(toggleTaskStatus(task.id)).unwrap();
-      toast({ title: isDone ? "Task moved to Todo" : "Excellent! Task completed" });
-    } catch {
-      toast({ title: "Update failed", variant: "destructive" });
+    } catch (err: any) {
+      toast({ 
+        title: "Update failed", 
+        description: err.message || "Could not update task status.", 
+        variant: "destructive" 
+      });
     } finally {
       setToggling(false);
     }
@@ -53,9 +54,12 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
   const handleDelete = async () => {
     try {
       await dispatch(removeTask(task.id)).unwrap();
-      toast({ title: "Task deleted" });
-    } catch {
-      toast({ title: "Delete failed", variant: "destructive" });
+    } catch (err: any) {
+      toast({ 
+        title: "Delete failed", 
+        description: err.message || "Task could not be deleted.", 
+        variant: "destructive" 
+      });
     }
   };
 

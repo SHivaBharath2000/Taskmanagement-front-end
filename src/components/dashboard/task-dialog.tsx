@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -84,16 +83,14 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
     try {
       if (task) {
         await dispatch(patchTask({ id: task.id, updates: values })).unwrap();
-        toast({ title: "Task updated" });
       } else {
         await dispatch(addTask(values)).unwrap();
-        toast({ title: "Task created" });
       }
       onOpenChange(false);
-    } catch {
+    } catch (err: any) {
       toast({ 
-        title: "Error", 
-        description: "Something went wrong. Please try again.", 
+        title: "Action failed", 
+        description: err.message || "Something went wrong. Please try again.", 
         variant: "destructive" 
       });
     } finally {

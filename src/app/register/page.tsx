@@ -59,7 +59,6 @@ export default function RegisterPage() {
   async function handleRegister(values: z.infer<typeof registerSchema>) {
     const result = await dispatch(registerUser(values));
     if (registerUser.fulfilled.match(result)) {
-      toast({ title: "Welcome!", description: "Your account has been created." });
       router.push("/dashboard");
     }
   }

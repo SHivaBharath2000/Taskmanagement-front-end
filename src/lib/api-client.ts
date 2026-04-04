@@ -27,29 +27,34 @@ const getHeaders = () => {
   };
 };
 
+const handleResponse = async (res: Response) => {
+  if (res.status === 204) return null;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'An unexpected error occurred');
+  return data;
+};
+
 export const apiClient = {
   auth: {
     login: async (email: string, pass: string) => {
-      const res = await fetch(`${BASE_URL}/auth/login`, {
+      const data = await fetch(`${BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password: pass }),
-      });
-      if (!res.ok) throw new Error('Invalid login credentials');
-      const data = await res.json();
+      }).then(handleResponse);
+      
       localStorage.setItem('token', data.accessToken);
       localStorage.setItem('refresh_token', data.refreshToken);
       return data;
     },
 
     register: async (name: string, email: string, pass: string) => {
-      const res = await fetch(`${BASE_URL}/auth/register`, {
+      const data = await fetch(`${BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password: pass }),
-      });
-      if (!res.ok) throw new Error('Registration failed');
-      const data = await res.json();
+      }).then(handleResponse);
+
       localStorage.setItem('token', data.accessToken);
       localStorage.setItem('refresh_token', data.refreshToken);
       return data;
@@ -72,48 +77,37 @@ export const apiClient = {
       if (status && status !== 'all') {
         url.searchParams.append('status', status);
       }
-      
-      const res = await fetch(url.toString(), { headers: getHeaders() });
-      if (!res.ok) throw new Error('Could not load tasks');
-      const data = await res.json();
-      return Array.isArray(data) ? data : data.tasks || [];
+      return fetch(url.toString(), { headers: getHeaders() }).then(handleResponse);
     },
 
     create: async (task: { title: string; description?: string }) => {
-      const res = await fetch(`${BASE_URL}/tasks`, {
+      return fetch(`${BASE_URL}/tasks`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ ...task, status: 'TODO' }),
-      });
-      if (!res.ok) throw new Error('Task creation failed');
-      return res.json();
+      }).then(handleResponse);
     },
 
     update: async (id: string, updates: Partial<Task>) => {
-      const res = await fetch(`${BASE_URL}/tasks/${id}`, {
+      return fetch(`${BASE_URL}/tasks/${id}`, {
         method: 'PATCH',
         headers: getHeaders(),
         body: JSON.stringify(updates),
-      });
-      if (!res.ok) throw new Error('Task update failed');
-      return res.json();
+      }).then(handleResponse);
     },
 
     delete: async (id: string) => {
-      const res = await fetch(`${BASE_URL}/tasks/${id}`, {
+      return fetch(`${BASE_URL}/tasks/${id}`, {
         method: 'DELETE',
         headers: getHeaders(),
-      });
-      if (!res.ok) throw new Error('Task deletion failed');
+      }).then(handleResponse);
     },
 
     toggle: async (id: string) => {
-      const res = await fetch(`${BASE_URL}/tasks/${id}/toggle`, {
+      return fetch(`${BASE_URL}/tasks/${id}/toggle`, {
         method: 'PATCH',
         headers: getHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to toggle task');
-      return res.json();
+      }).then(handleResponse);
     },
   },
 };
