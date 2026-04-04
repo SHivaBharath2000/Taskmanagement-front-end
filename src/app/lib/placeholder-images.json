@@ -1,0 +1,17 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "app-logo",
+      "description": "Abstract nexus logo",
+      "imageUrl": "https://picsum.photos/seed/nexus1/200/200",
+      "imageHint": "nexus logo"
+    },
+    {
+      "id": "auth-bg",
+      "description": "Productive workspace background",
+      "imageUrl": "https://picsum.photos/seed/workspace1/1920/1080",
+      "imageHint": "modern workspace"
+    }
+  ]
+}
