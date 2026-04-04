@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Task, apiClient } from "@/lib/api-client";
+import { Task } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { useAppDispatch } from "@/lib/hooks";
+import { createTask, updateTask } from "@/lib/features/tasks/tasks-slice";
 
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
@@ -45,10 +47,10 @@ interface TaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task?: Task | null;
-  onSuccess: () => void;
 }
 
-export function TaskDialog({ open, onOpenChange, task, onSuccess }: TaskDialogProps) {
+export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
+  const dispatch = useAppDispatch();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -66,10 +68,10 @@ export function TaskDialog({ open, onOpenChange, task, onSuccess }: TaskDialogPr
     if (task) {
       form.reset({
         title: task.title,
-        description: task.description,
+        description: task.description || "",
         priority: task.priority,
         category: task.category,
-        dueDate: task.dueDate,
+        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
       });
     } else {
       form.reset({
@@ -86,13 +88,20 @@ export function TaskDialog({ open, onOpenChange, task, onSuccess }: TaskDialogPr
     setIsLoading(true);
     try {
       if (task) {
-        await apiClient.updateTask(task.id, values);
-        toast({ title: "Task updated successfully" });
+        const result = await dispatch(updateTask({ id: task.id, updates: values }));
+        if (updateTask.fulfilled.match(result)) {
+          toast({ title: "Task updated successfully" });
+        } else {
+          throw new Error("Update failed");
+        }
       } else {
-        await apiClient.createTask(values);
-        toast({ title: "Task created successfully" });
+        const result = await dispatch(createTask(values));
+        if (createTask.fulfilled.match(result)) {
+          toast({ title: "Task created successfully" });
+        } else {
+          throw new Error("Creation failed");
+        }
       }
-      onSuccess();
       onOpenChange(false);
     } catch (error) {
       toast({ title: "Operation failed", variant: "destructive" });
@@ -142,7 +151,7 @@ export function TaskDialog({ open, onOpenChange, task, onSuccess }: TaskDialogPr
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select priority" />

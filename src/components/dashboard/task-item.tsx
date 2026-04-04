@@ -1,12 +1,12 @@
 
 "use client";
 
-import { Task, apiClient } from "@/lib/api-client";
+import { Task } from "@/lib/api-client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit2, Trash2, Calendar, Tag } from "lucide-react";
+import { MoreVertical, Edit2, Trash2, Calendar, Tag, Loader2 } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -16,22 +16,29 @@ import {
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
+import { useAppDispatch } from "@/lib/hooks";
+import { toggleTask, deleteTask } from "@/lib/features/tasks/tasks-slice";
 
 interface TaskItemProps {
   task: Task;
-  onRefresh: () => void;
   onEdit: (task: Task) => void;
 }
 
-export function TaskItem({ task, onRefresh, onEdit }: TaskItemProps) {
+export function TaskItem({ task, onEdit }: TaskItemProps) {
+  const dispatch = useAppDispatch();
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const isCompleted = task.status === 'completed';
 
   const handleToggle = async () => {
     setIsUpdating(true);
     try {
-      await apiClient.toggleTaskStatus(task.id);
-      toast({ title: task.completed ? "Task uncompleted" : "Task completed!" });
-      onRefresh();
+      const result = await dispatch(toggleTask(task.id));
+      if (toggleTask.fulfilled.match(result)) {
+        toast({ title: isCompleted ? "Task set to pending" : "Task completed!" });
+      } else {
+        throw new Error("Failed to toggle");
+      }
     } catch (error) {
       toast({ title: "Failed to update task", variant: "destructive" });
     } finally {
@@ -41,9 +48,12 @@ export function TaskItem({ task, onRefresh, onEdit }: TaskItemProps) {
 
   const handleDelete = async () => {
     try {
-      await apiClient.deleteTask(task.id);
-      toast({ title: "Task deleted successfully" });
-      onRefresh();
+      const result = await dispatch(deleteTask(task.id));
+      if (deleteTask.fulfilled.match(result)) {
+        toast({ title: "Task deleted successfully" });
+      } else {
+        throw new Error("Failed to delete");
+      }
     } catch (error) {
       toast({ title: "Failed to delete task", variant: "destructive" });
     }
@@ -58,22 +68,26 @@ export function TaskItem({ task, onRefresh, onEdit }: TaskItemProps) {
   return (
     <Card className={cn(
       "group flex items-start gap-4 p-4 transition-all hover:shadow-md border-l-4",
-      task.completed ? "opacity-70 border-l-muted" : "border-l-primary"
+      isCompleted ? "opacity-70 border-l-muted" : "border-l-primary"
     )}>
       <div className="pt-1">
-        <Checkbox 
-          checked={task.completed} 
-          onCheckedChange={handleToggle}
-          disabled={isUpdating}
-          className="h-5 w-5 rounded-full"
-        />
+        {isUpdating ? (
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        ) : (
+          <Checkbox 
+            checked={isCompleted} 
+            onCheckedChange={handleToggle}
+            disabled={isUpdating}
+            className="h-5 w-5 rounded-full"
+          />
+        )}
       </div>
       
       <div className="flex-1 space-y-1">
         <div className="flex items-center justify-between gap-2">
           <h3 className={cn(
             "font-semibold text-lg transition-all",
-            task.completed && "line-through text-muted-foreground"
+            isCompleted && "line-through text-muted-foreground"
           )}>
             {task.title}
           </h3>
@@ -84,7 +98,7 @@ export function TaskItem({ task, onRefresh, onEdit }: TaskItemProps) {
         
         <p className={cn(
           "text-sm text-muted-foreground line-clamp-2",
-          task.completed && "opacity-60"
+          isCompleted && "opacity-60"
         )}>
           {task.description}
         </p>

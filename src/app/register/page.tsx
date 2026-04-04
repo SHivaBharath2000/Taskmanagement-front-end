@@ -1,13 +1,12 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -21,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { CheckCircle2, Mail, Lock, User, Loader2 } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import { register, checkAuth } from "@/lib/features/auth/auth-slice";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -30,23 +31,32 @@ const formSchema = z.object({
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const { isLoading, isAuthenticated, error } = useAppSelector((state) => state.auth);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { name: "", email: "", password: "" },
   });
 
+  useEffect(() => {
+    dispatch(checkAuth());
+    if (isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, router, dispatch]);
+
+  useEffect(() => {
+    if (error) {
+      toast({ title: "Registration failed", description: error, variant: "destructive" });
+    }
+  }, [error]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
-    try {
-      await apiClient.register(values.name, values.email, values.password);
+    const result = await dispatch(register(values));
+    if (register.fulfilled.match(result)) {
       toast({ title: "Account created!", description: "Welcome to Nexus Tasks." });
       router.push("/dashboard");
-    } catch (error) {
-      toast({ title: "Registration failed", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
     }
   }
 

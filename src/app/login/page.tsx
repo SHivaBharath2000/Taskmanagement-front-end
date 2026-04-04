@@ -1,13 +1,12 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -21,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { CheckCircle2, Mail, Lock, Loader2 } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import { login, checkAuth } from "@/lib/features/auth/auth-slice";
 
 const formSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -29,23 +30,32 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const { isLoading, isAuthenticated, error } = useAppSelector((state) => state.auth);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: "", password: "" },
   });
 
+  useEffect(() => {
+    dispatch(checkAuth());
+    if (isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, router, dispatch]);
+
+  useEffect(() => {
+    if (error) {
+      toast({ title: "Login failed", description: error, variant: "destructive" });
+    }
+  }, [error]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
-    try {
-      await apiClient.login(values.email, values.password);
+    const result = await dispatch(login(values));
+    if (login.fulfilled.match(result)) {
       toast({ title: "Welcome back!", description: "You have successfully logged in." });
       router.push("/dashboard");
-    } catch (error) {
-      toast({ title: "Login failed", description: "Please check your credentials.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
     }
   }
 

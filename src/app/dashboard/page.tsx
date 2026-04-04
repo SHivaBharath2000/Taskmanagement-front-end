@@ -3,7 +3,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Task, apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -33,39 +32,37 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import { fetchTasks } from "@/lib/features/tasks/tasks-slice";
+import { logout, checkAuth } from "@/lib/features/auth/auth-slice";
+import { Task } from "@/lib/api-client";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { items: tasks, isLoading } = useAppSelector((state) => state.tasks);
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPriority, setFilterPriority] = useState("all");
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  const fetchTasks = async () => {
-    setIsLoading(true);
-    try {
-      const data = await apiClient.getTasks();
-      setTasks(data);
-    } catch (error) {
-      console.error("Failed to fetch tasks", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    dispatch(checkAuth());
+  }, [dispatch]);
 
   useEffect(() => {
-    if (!apiClient.isAuthenticated()) {
+    if (!isAuthenticated) {
       router.push("/login");
     } else {
-      fetchTasks();
+      dispatch(fetchTasks());
     }
-  }, [router]);
+  }, [isAuthenticated, router, dispatch]);
 
-  const handleLogout = () => {
-    apiClient.logout();
+  const handleLogout = async () => {
+    await dispatch(logout());
     router.push("/login");
   };
 
@@ -92,15 +89,14 @@ export default function DashboardPage() {
   const stats = useMemo(() => {
     return {
       total: tasks.length,
-      completed: tasks.filter(t => t.completed).length,
-      pending: tasks.filter(t => !t.completed).length,
-      highPriority: tasks.filter(t => t.priority === "high" && !t.completed).length,
+      completed: tasks.filter(t => t.status === 'completed').length,
+      pending: tasks.filter(t => t.status === 'pending').length,
+      highPriority: tasks.filter(t => t.priority === "high" && t.status === 'pending').length,
     };
   }, [tasks]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -113,7 +109,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground mr-4">
                <TrendingUp className="h-4 w-4 text-accent" />
-               <span>Welcome back, User</span>
+               <span>Welcome back, {user?.name || 'User'}</span>
             </div>
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
               <LogOut className="h-5 w-5" />
@@ -123,7 +119,6 @@ export default function DashboardPage() {
       </header>
 
       <main className="flex-1 container max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 animate-fade-in">
-        {/* Stats Section */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
            <div className="bg-card p-4 rounded-xl border shadow-sm flex items-center gap-4">
               <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
@@ -163,7 +158,6 @@ export default function DashboardPage() {
            </div>
         </section>
 
-        {/* Action Bar */}
         <section className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="relative w-full md:max-w-md">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -222,7 +216,6 @@ export default function DashboardPage() {
 
         <Separator />
 
-        {/* Tasks View */}
         <section className="min-h-[400px]">
           {isLoading ? (
             <div className="h-[400px] flex flex-col items-center justify-center space-y-4">
@@ -238,7 +231,6 @@ export default function DashboardPage() {
                 <TaskItem 
                   key={task.id} 
                   task={task} 
-                  onRefresh={fetchTasks} 
                   onEdit={handleEdit}
                 />
               ))}
@@ -268,10 +260,8 @@ export default function DashboardPage() {
         open={isDialogOpen} 
         onOpenChange={setIsDialogOpen} 
         task={editingTask} 
-        onSuccess={fetchTasks}
       />
       
-      {/* Footer */}
       <footer className="py-6 border-t mt-auto">
         <div className="container max-w-7xl mx-auto px-4 text-center text-xs text-muted-foreground">
           © {new Date().getFullYear()} Nexus Tasks. Built for professionals.
