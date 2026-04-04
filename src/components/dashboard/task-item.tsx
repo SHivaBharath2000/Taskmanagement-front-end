@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Task } from "@/lib/api-client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,17 @@ interface TaskItemProps {
 export function TaskItem({ task, onEdit }: TaskItemProps) {
   const dispatch = useAppDispatch();
   const [toggling, setToggling] = useState(false);
+  const [formattedDate, setFormattedDate] = useState<string>("");
+
+  useEffect(() => {
+    // Format date only on the client to prevent hydration mismatch
+    setFormattedDate(
+      new Date(task.updatedAt).toLocaleDateString(undefined, { 
+        month: 'short', 
+        day: 'numeric' 
+      })
+    );
+  }, [task.updatedAt]);
 
   const isDone = task.status === 'DONE';
 
@@ -47,7 +59,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
     }
   };
 
-  const styles = {
+  const statusStyles = {
     TODO: "bg-slate-100 text-slate-600 border-slate-200",
     IN_PROGRESS: "bg-blue-50 text-blue-600 border-blue-100",
     DONE: "bg-green-50 text-green-600 border-green-100",
@@ -56,7 +68,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
   return (
     <Card className={cn(
       "group relative flex items-start gap-4 p-5 transition-all hover:shadow-lg border-l-4",
-      isDone ? "border-l-slate-200 bg-slate-50/50" : "border-l-primary bg-white"
+      isDone ? "border-l-slate-200 bg-slate-50/50" : "border-l-primary bg-white shadow-sm"
     )}>
       <div className="mt-1">
         {toggling ? (
@@ -78,7 +90,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
           )}>
             {task.title}
           </h3>
-          <Badge variant="outline" className={cn("text-[10px] font-bold px-2 py-0 h-5", styles)}>
+          <Badge variant="outline" className={cn("text-[10px] font-bold px-2 py-0 h-5 whitespace-nowrap", statusStyles)}>
             {task.status.replace('_', ' ')}
           </Badge>
         </div>
@@ -91,7 +103,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
 
         <div className="flex items-center gap-1.5 pt-2 text-[10px] font-medium text-slate-400">
           {isDone ? <CheckCircle size={12} className="text-green-500" /> : <Clock size={12} />}
-          <span>{new Date(task.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+          <span>{formattedDate || "Loading..."}</span>
         </div>
       </div>
 
