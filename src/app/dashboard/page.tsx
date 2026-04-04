@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -6,184 +5,141 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
-  Plus, 
-  Search, 
-  Filter, 
-  LogOut, 
-  CheckCircle2, 
-  LayoutList, 
-  LayoutGrid,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  Loader2
+  Plus, Search, Filter, LogOut, CheckCircle2, 
+  LayoutList, LayoutGrid, TrendingUp, Clock, CheckCircle, Loader2 
 } from "lucide-react";
 import { TaskItem } from "@/components/dashboard/task-item";
 import { TaskDialog } from "@/components/dashboard/task-dialog";
 import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuLabel, 
-  DropdownMenuRadioGroup, 
-  DropdownMenuRadioItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+  DropdownMenu, DropdownMenuContent, DropdownMenuLabel, 
+  DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
-import { fetchTasks } from "@/lib/features/tasks/tasks-slice";
-import { logout, checkAuth } from "@/lib/features/auth/auth-slice";
+import { loadTasks } from "@/lib/features/tasks/tasks-slice";
+import { logout, syncAuth } from "@/lib/features/auth/auth-slice";
 import { Task, TaskStatus } from "@/lib/api-client";
 
-export default function DashboardPage() {
+export default function Dashboard() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { items: tasks, isLoading } = useAppSelector((state) => state.tasks);
-  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const { items: tasks, loading } = useAppSelector(s => s.tasks);
+  const { isAuthenticated, user } = useAppSelector(s => s.auth);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<TaskStatus | "all">("all");
-  const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<TaskStatus | "all">("all");
+  const [view, setView] = useState<"list" | "grid">("grid");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    dispatch(checkAuth());
+    dispatch(syncAuth());
   }, [dispatch]);
 
   useEffect(() => {
-    if (mounted && !isAuthenticated) {
-      router.push("/login");
-    } else if (mounted && isAuthenticated) {
-      dispatch(fetchTasks());
+    if (mounted) {
+      if (!isAuthenticated) {
+        router.push("/login");
+      } else {
+        dispatch(loadTasks());
+      }
     }
-  }, [isAuthenticated, router, dispatch, mounted]);
+  }, [mounted, isAuthenticated, router, dispatch]);
 
-  const handleLogout = async () => {
-    await dispatch(logout());
+  const handleLogout = () => {
+    dispatch(logout());
     router.push("/login");
   };
 
-  const handleEdit = (task: Task) => {
-    setEditingTask(task);
-    setIsDialogOpen(true);
-  };
-
-  const handleCreate = () => {
-    setEditingTask(null);
-    setIsDialogOpen(true);
+  const openEditor = (task?: Task) => {
+    setActiveTask(task || null);
+    setDialogOpen(true);
   };
 
   const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
-      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            (task.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-      const matchesStatus = filterStatus === "all" || task.status === filterStatus;
-      return matchesSearch && matchesStatus;
+    return tasks.filter(t => {
+      const matchText = t.title.toLowerCase().includes(search.toLowerCase()) || 
+                       (t.description?.toLowerCase().includes(search.toLowerCase()) ?? false);
+      const matchStatus = filter === "all" || t.status === filter;
+      return matchText && matchStatus;
     });
-  }, [tasks, searchQuery, filterStatus]);
+  }, [tasks, search, filter]);
 
-  const stats = useMemo(() => {
-    return {
-      total: tasks.length,
-      todo: tasks.filter(t => t.status === 'TODO').length,
-      inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
-      done: tasks.filter(t => t.status === 'DONE').length,
-    };
-  }, [tasks]);
+  const stats = {
+    total: tasks.length,
+    todo: tasks.filter(t => t.status === 'TODO').length,
+    progress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
+    done: tasks.filter(t => t.status === 'DONE').length,
+  };
 
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-30 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground shadow-sm">
-              <CheckCircle2 size={18} />
+    <div className="min-h-screen bg-slate-50 flex flex-col font-body">
+      <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md">
+        <div className="container max-w-7xl mx-auto h-16 flex items-center justify-between px-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-primary rounded-lg shadow-sm">
+              <CheckCircle2 className="text-white w-5 h-5" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-primary hidden sm:inline-block">Nexus Tasks</span>
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Nexus</h1>
           </div>
-
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 text-sm font-medium text-muted-foreground mr-4">
-               <TrendingUp className="h-4 w-4 text-accent" />
-               <span>Welcome back, {user?.name || 'User'}</span>
-            </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
-              <LogOut className="h-5 w-5" />
+            <span className="text-sm font-medium text-slate-500 hidden md:inline">
+              Hi, {user?.name || 'there'}
+            </span>
+            <Button variant="ghost" size="icon" onClick={handleLogout}>
+              <LogOut className="w-5 h-5 text-slate-400" />
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 container max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 animate-fade-in">
+      <main className="flex-1 container max-w-7xl mx-auto p-4 md:p-8 space-y-8">
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-           <div className="bg-card p-4 rounded-xl border shadow-sm flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                <LayoutList size={20} />
+          {[
+            { label: 'Total', val: stats.total, icon: LayoutList, color: 'text-primary' },
+            { label: 'To Do', val: stats.todo, icon: Clock, color: 'text-slate-500' },
+            { label: 'Active', val: stats.progress, icon: TrendingUp, color: 'text-blue-500' },
+            { label: 'Done', val: stats.done, icon: CheckCircle, color: 'text-green-500' }
+          ].map((s, i) => (
+            <div key={i} className="bg-white p-5 rounded-xl border shadow-sm flex items-center gap-4">
+              <div className={cn("p-2.5 rounded-full bg-slate-50", s.color)}>
+                <s.icon size={20} />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Total</p>
-                <p className="text-xl font-bold">{stats.total}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{s.label}</p>
+                <p className="text-xl font-bold text-slate-900">{s.val}</p>
               </div>
-           </div>
-           <div className="bg-card p-4 rounded-xl border shadow-sm flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center">
-                <Clock size={20} />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">To Do</p>
-                <p className="text-xl font-bold">{stats.todo}</p>
-              </div>
-           </div>
-           <div className="bg-card p-4 rounded-xl border shadow-sm flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-                <Clock size={20} />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">In Progress</p>
-                <p className="text-xl font-bold">{stats.inProgress}</p>
-              </div>
-           </div>
-           <div className="bg-card p-4 rounded-xl border shadow-sm flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
-                <CheckCircle size={20} />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Done</p>
-                <p className="text-xl font-bold">{stats.done}</p>
-              </div>
-           </div>
+            </div>
+          ))}
         </section>
 
-        <section className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:max-w-md">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <section className="flex flex-col md:flex-row items-center gap-4 justify-between bg-white p-4 rounded-xl border shadow-sm">
+          <div className="relative w-full md:max-w-sm">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
             <Input 
-              placeholder="Search tasks or descriptions..." 
-              className="pl-10 h-10 bg-card"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search your tasks..." 
+              className="pl-10 bg-slate-50 border-none focus-visible:ring-1"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-3 w-full md:w-auto">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex-1 md:flex-none">
-                  <Filter className="mr-2 h-4 w-4" /> 
-                  Status {filterStatus !== "all" && `: ${filterStatus}`}
+                <Button variant="outline" className="flex-1 md:w-40 justify-between">
+                  <span className="flex items-center gap-2"><Filter size={14} /> {filter === 'all' ? 'Status' : filter}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>By Status</DropdownMenuLabel>
+              <DropdownMenuContent className="w-48">
+                <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={filterStatus} onValueChange={(val) => setFilterStatus(val as TaskStatus | "all")}>
-                  <DropdownMenuRadioItem value="all">All Statuses</DropdownMenuRadioItem>
+                <DropdownMenuRadioGroup value={filter} onValueChange={(v) => setFilter(v as any)}>
+                  <DropdownMenuRadioItem value="all">All Tasks</DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="TODO">To Do</DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="IN_PROGRESS">In Progress</DropdownMenuRadioItem>
                   <DropdownMenuRadioItem value="DONE">Done</DropdownMenuRadioItem>
@@ -191,84 +147,49 @@ export default function DashboardPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="hidden sm:flex border rounded-md p-1 bg-muted/20">
-              <Button 
-                variant={viewMode === "list" ? "secondary" : "ghost"} 
-                size="icon" 
-                className="h-8 w-8"
-                onClick={() => setViewMode("list")}
-              >
-                <LayoutList className="h-4 w-4" />
+            <div className="hidden sm:flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+              <Button size="icon" variant={view === 'list' ? 'white' : 'ghost'} className="h-8 w-8" onClick={() => setView('list')}>
+                <LayoutList size={16} />
               </Button>
-              <Button 
-                variant={viewMode === "grid" ? "secondary" : "ghost"} 
-                size="icon" 
-                className="h-8 w-8"
-                onClick={() => setViewMode("grid")}
-              >
-                <LayoutGrid className="h-4 w-4" />
+              <Button size="icon" variant={view === 'grid' ? 'white' : 'ghost'} className="h-8 w-8" onClick={() => setView('grid')}>
+                <LayoutGrid size={16} />
               </Button>
             </div>
 
-            <Button onClick={handleCreate} className="flex-1 md:flex-none bg-accent text-accent-foreground hover:bg-accent/90">
-              <Plus className="mr-2 h-4 w-4" /> New Task
+            <Button onClick={() => openEditor()} className="flex-1 md:flex-none">
+              <Plus size={18} className="mr-1" /> New Task
             </Button>
           </div>
         </section>
 
-        <Separator />
-
-        <section className="min-h-[400px]">
-          {isLoading ? (
-            <div className="h-[400px] flex flex-col items-center justify-center space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-muted-foreground animate-pulse">Synchronizing your tasks...</p>
+        <section className="min-h-[300px]">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-64 text-slate-400 gap-3">
+              <Loader2 className="animate-spin" size={32} />
+              <p className="text-sm font-medium">Updating list...</p>
             </div>
           ) : filteredTasks.length > 0 ? (
             <div className={cn(
-              "grid gap-4 transition-all",
-              viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"
+              "grid gap-5",
+              view === "grid" ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"
             )}>
-              {filteredTasks.map((task) => (
-                <TaskItem 
-                  key={task.id} 
-                  task={task} 
-                  onEdit={handleEdit}
-                />
+              {filteredTasks.map(t => (
+                <TaskItem key={t.id} task={t} onEdit={() => openEditor(t)} />
               ))}
             </div>
           ) : (
-            <div className="h-[400px] flex flex-col items-center justify-center text-center space-y-4">
-              <div className="h-20 w-20 rounded-full bg-muted/20 flex items-center justify-center text-muted-foreground/30 mb-2">
-                <CheckCircle2 size={48} />
-              </div>
-              <h3 className="text-xl font-semibold">All clear!</h3>
-              <p className="text-muted-foreground max-w-xs">
-                {searchQuery || filterStatus !== "all" 
-                  ? "No tasks match your current filters." 
-                  : "You've finished everything. Start a new chapter today!"}
+            <div className="flex flex-col items-center justify-center h-80 text-center space-y-3 bg-white border border-dashed rounded-2xl">
+              <div className="bg-slate-50 p-4 rounded-full text-slate-300"><CheckCircle2 size={40} /></div>
+              <h3 className="font-semibold text-slate-900">No tasks found</h3>
+              <p className="text-sm text-slate-500 max-w-[240px]">
+                {search || filter !== 'all' ? "Try adjusting your filters to find what you need." : "Time to start something new. Create your first task!"}
               </p>
-              {(searchQuery || filterStatus !== "all") && (
-                <Button variant="link" onClick={() => { setSearchQuery(""); setFilterStatus("all"); }}>
-                  Clear Filters
-                </Button>
-              )}
             </div>
           )}
         </section>
       </main>
 
-      <TaskDialog 
-        open={isDialogOpen} 
-        onOpenChange={setIsDialogOpen} 
-        task={editingTask} 
-      />
-      
-      <footer className="py-6 border-t mt-auto">
-        <div className="container max-w-7xl mx-auto px-4 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Nexus Tasks. Built for professionals.
-        </div>
-      </footer>
+      <TaskDialog open={dialogOpen} onOpenChange={setDialogOpen} task={activeTask} />
     </div>
   );
 }

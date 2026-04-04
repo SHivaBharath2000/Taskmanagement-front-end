@@ -1,74 +1,38 @@
-
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { apiClient, Task } from '@/lib/api-client';
 
 interface TasksState {
   items: Task[];
-  isLoading: boolean;
+  loading: boolean;
   error: string | null;
 }
 
 const initialState: TasksState = {
   items: [],
-  isLoading: false,
+  loading: false,
   error: null,
 };
 
-export const fetchTasks = createAsyncThunk(
-  'tasks/fetchTasks',
-  async (filters: any = {}, { rejectWithValue }) => {
-    try {
-      return await apiClient.getTasks(filters);
-    } catch (err: any) {
-      return rejectWithValue(err.message);
-    }
-  }
-);
+export const loadTasks = createAsyncThunk('tasks/load', async (status: string | undefined) => {
+  return await apiClient.tasks.list(status);
+});
 
-export const createTask = createAsyncThunk(
-  'tasks/createTask',
-  async (taskData: { title: string; description?: string }, { rejectWithValue }) => {
-    try {
-      return await apiClient.createTask(taskData);
-    } catch (err: any) {
-      return rejectWithValue(err.message);
-    }
-  }
-);
+export const addTask = createAsyncThunk('tasks/add', async (payload: any) => {
+  return await apiClient.tasks.create(payload);
+});
 
-export const updateTask = createAsyncThunk(
-  'tasks/updateTask',
-  async ({ id, updates }: { id: string; updates: Partial<Task> }, { rejectWithValue }) => {
-    try {
-      return await apiClient.updateTask(id, updates);
-    } catch (err: any) {
-      return rejectWithValue(err.message);
-    }
-  }
-);
+export const patchTask = createAsyncThunk('tasks/patch', async ({ id, updates }: any) => {
+  return await apiClient.tasks.update(id, updates);
+});
 
-export const toggleTask = createAsyncThunk(
-  'tasks/toggleTask',
-  async (id: string, { rejectWithValue }) => {
-    try {
-      return await apiClient.toggleTaskStatus(id);
-    } catch (err: any) {
-      return rejectWithValue(err.message);
-    }
-  }
-);
+export const removeTask = createAsyncThunk('tasks/remove', async (id: string) => {
+  await apiClient.tasks.delete(id);
+  return id;
+});
 
-export const deleteTask = createAsyncThunk(
-  'tasks/deleteTask',
-  async (id: string, { rejectWithValue }) => {
-    try {
-      await apiClient.deleteTask(id);
-      return id;
-    } catch (err: any) {
-      return rejectWithValue(err.message);
-    }
-  }
-);
+export const toggleTaskStatus = createAsyncThunk('tasks/toggle', async (id: string) => {
+  return await apiClient.tasks.toggle(id);
+});
 
 const tasksSlice = createSlice({
   name: 'tasks',
@@ -76,35 +40,26 @@ const tasksSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchTasks.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
+      .addCase(loadTasks.pending, (state) => {
+        state.loading = true;
       })
-      .addCase(fetchTasks.fulfilled, (state, action: PayloadAction<Task[]>) => {
-        state.isLoading = false;
+      .addCase(loadTasks.fulfilled, (state, action) => {
+        state.loading = false;
         state.items = action.payload;
       })
-      .addCase(fetchTasks.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-      })
-      .addCase(createTask.fulfilled, (state, action: PayloadAction<Task>) => {
+      .addCase(addTask.fulfilled, (state, action) => {
         state.items.unshift(action.payload);
       })
-      .addCase(updateTask.fulfilled, (state, action: PayloadAction<Task>) => {
-        const index = state.items.findIndex((t) => t.id === action.payload.id);
-        if (index !== -1) {
-          state.items[index] = action.payload;
-        }
+      .addCase(patchTask.fulfilled, (state, action) => {
+        const i = state.items.findIndex(t => t.id === action.payload.id);
+        if (i !== -1) state.items[i] = action.payload;
       })
-      .addCase(toggleTask.fulfilled, (state, action: PayloadAction<Task>) => {
-        const index = state.items.findIndex((t) => t.id === action.payload.id);
-        if (index !== -1) {
-          state.items[index] = action.payload;
-        }
+      .addCase(toggleTaskStatus.fulfilled, (state, action) => {
+        const i = state.items.findIndex(t => t.id === action.payload.id);
+        if (i !== -1) state.items[i] = action.payload;
       })
-      .addCase(deleteTask.fulfilled, (state, action: PayloadAction<string>) => {
-        state.items = state.items.filter((t) => t.id !== action.payload);
+      .addCase(removeTask.fulfilled, (state, action) => {
+        state.items = state.items.filter(t => t.id !== action.payload);
       });
   },
 });
