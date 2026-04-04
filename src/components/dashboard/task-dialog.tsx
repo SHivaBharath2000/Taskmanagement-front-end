@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Task, TaskStatus } from "@/lib/api-client";
+import { Task } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
@@ -31,12 +31,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAppDispatch } from "@/lib/hooks";
-import { createTask, updateTask } from "@/lib/features/tasks/tasks-slice";
+import { addTask, patchTask } from "@/lib/features/tasks/tasks-slice";
 
-const formSchema = z.object({
-  title: z.string().min(2, "Title must be at least 2 characters"),
+const taskSchema = z.object({
+  title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   status: z.enum(["TODO", "IN_PROGRESS", "DONE"]),
 });
@@ -49,11 +49,11 @@ interface TaskDialogProps {
 
 export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
   const dispatch = useAppDispatch();
-  const [isLoading, setIsLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof taskSchema>>({
+    resolver: zodResolver(taskSchema),
     defaultValues: {
       title: "",
       description: "",
@@ -62,11 +62,7 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
   });
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (mounted && open) {
+    if (open) {
       if (task) {
         form.reset({
           title: task.title,
@@ -81,44 +77,38 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
         });
       }
     }
-  }, [task, form, open, mounted]);
+  }, [open, task, form]);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
+  async function handleSave(values: z.infer<typeof taskSchema>) {
+    setSaving(true);
     try {
       if (task) {
-        const result = await dispatch(updateTask({ id: task.id, updates: values }));
-        if (updateTask.fulfilled.match(result)) {
-          toast({ title: "Task updated successfully" });
-        } else {
-          throw new Error("Update failed");
-        }
+        await dispatch(patchTask({ id: task.id, updates: values })).unwrap();
+        toast({ title: "Task updated" });
       } else {
-        const result = await dispatch(createTask(values));
-        if (createTask.fulfilled.match(result)) {
-          toast({ title: "Task created successfully" });
-        } else {
-          throw new Error("Creation failed");
-        }
+        await dispatch(addTask(values)).unwrap();
+        toast({ title: "Task created" });
       }
       onOpenChange(false);
-    } catch (error) {
-      toast({ title: "Operation failed", variant: "destructive" });
+    } catch {
+      toast({ 
+        title: "Error", 
+        description: "Something went wrong. Please try again.", 
+        variant: "destructive" 
+      });
     } finally {
-      setIsLoading(false);
+      setSaving(false);
     }
   }
 
-  if (!mounted) return null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{task ? "Edit Task" : "Create New Task"}</DialogTitle>
+          <DialogTitle>{task ? "Edit Task" : "New Task"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4 py-4">
             <FormField
               control={form.control}
               name="title"
@@ -126,7 +116,7 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter task title" {...field} />
+                    <Input placeholder="What needs to be done?" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -139,7 +129,11 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Task details..." {...field} />
+                    <Textarea 
+                      placeholder="Add details..." 
+                      className="resize-none h-24" 
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -151,10 +145,10 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
+                        <SelectValue placeholder="Status" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -168,8 +162,8 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
               )}
             />
             <DialogFooter className="pt-4">
-              <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? "Saving..." : (task ? "Update Task" : "Create Task")}
+              <Button type="submit" disabled={saving} className="w-full">
+                {saving ? "Saving..." : (task ? "Update" : "Create")}
               </Button>
             </DialogFooter>
           </form>
