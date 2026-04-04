@@ -70,16 +70,16 @@ export default function LoginPage() {
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105">
               <CheckCircle2 size={24} />
             </div>
-            <span className="text-2xl font-bold tracking-tight text-slate-900">Nexus Tasks</span>
+            <span className="text-xl font-bold tracking-tight text-slate-900">Task Management System</span>
           </Link>
           <h1 className="text-3xl font-bold mt-8 text-slate-900">Sign In</h1>
-          <p className="text-slate-500 mt-2">Manage your goals with focus and clarity</p>
+          <p className="text-slate-500 mt-2">Access your professional workspace</p>
         </div>
 
         <Card className="border-none shadow-xl">
           <CardHeader>
             <CardTitle className="text-xl">Welcome Back</CardTitle>
-            <CardDescription>Enter your credentials to access your dashboard</CardDescription>
+            <CardDescription>Enter your credentials to continue</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>

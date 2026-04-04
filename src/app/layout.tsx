@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
@@ -11,11 +10,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Nexus Tasks | Professional Task Management',
-  description: 'Manage your goals with focus and clarity using Nexus Tasks.',
+  title: 'Task Management System',
+  description: 'A professional workspace to organize, track, and achieve your goals.',
 };
 
-export default function RootLayout({
+export default function RootLayer({
   children,
 }: Readonly<{
   children: React.ReactNode;

@@ -84,7 +84,7 @@ export default function Dashboard() {
             <div className="p-1.5 bg-primary rounded-lg shadow-sm">
               <CheckCircle2 className="text-white w-5 h-5" />
             </div>
-            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Nexus</h1>
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Task System</h1>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-slate-500 hidden md:inline">

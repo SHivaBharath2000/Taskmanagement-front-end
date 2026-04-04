@@ -71,16 +71,16 @@ export default function RegisterPage() {
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-105">
               <CheckCircle2 size={24} />
             </div>
-            <span className="text-2xl font-bold tracking-tight text-slate-900">Nexus Tasks</span>
+            <span className="text-xl font-bold tracking-tight text-slate-900">Task Management System</span>
           </Link>
-          <h1 className="text-3xl font-bold mt-8 text-slate-900">Join Nexus</h1>
-          <p className="text-slate-500 mt-2">Start organizing your tasks professionally</p>
+          <h1 className="text-3xl font-bold mt-8 text-slate-900">Join Us</h1>
+          <p className="text-slate-500 mt-2">Start organizing your work professionally</p>
         </div>
 
         <Card className="border-none shadow-xl">
           <CardHeader>
             <CardTitle className="text-xl">Create Account</CardTitle>
-            <CardDescription>Fill in your details to get started</CardDescription>
+            <CardDescription>Enter your details to get started</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
