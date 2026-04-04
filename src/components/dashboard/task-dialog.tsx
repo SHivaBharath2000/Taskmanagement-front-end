@@ -52,6 +52,7 @@ interface TaskDialogProps {
 export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
   const dispatch = useAppDispatch();
   const [isLoading, setIsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -60,29 +61,35 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
       description: "",
       priority: "medium",
       category: "General",
-      dueDate: new Date().toISOString().split('T')[0],
+      dueDate: "",
     },
   });
 
   useEffect(() => {
-    if (task) {
-      form.reset({
-        title: task.title,
-        description: task.description || "",
-        priority: task.priority,
-        category: task.category,
-        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
-      });
-    } else {
-      form.reset({
-        title: "",
-        description: "",
-        priority: "medium",
-        category: "General",
-        dueDate: new Date().toISOString().split('T')[0],
-      });
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      if (task) {
+        form.reset({
+          title: task.title,
+          description: task.description || "",
+          priority: task.priority,
+          category: task.category,
+          dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
+        });
+      } else {
+        form.reset({
+          title: "",
+          description: "",
+          priority: "medium",
+          category: "General",
+          dueDate: new Date().toISOString().split('T')[0],
+        });
+      }
     }
-  }, [task, form, open]);
+  }, [task, form, open, mounted]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -109,6 +116,8 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
       setIsLoading(false);
     }
   }
+
+  if (!mounted) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

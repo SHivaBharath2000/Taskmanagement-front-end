@@ -48,18 +48,20 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     dispatch(checkAuth());
   }, [dispatch]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (mounted && !isAuthenticated) {
       router.push("/login");
-    } else {
+    } else if (mounted && isAuthenticated) {
       dispatch(fetchTasks());
     }
-  }, [isAuthenticated, router, dispatch]);
+  }, [isAuthenticated, router, dispatch, mounted]);
 
   const handleLogout = async () => {
     await dispatch(logout());
@@ -94,6 +96,8 @@ export default function DashboardPage() {
       highPriority: tasks.filter(t => t.priority === "high" && t.status === 'pending').length,
     };
   }, [tasks]);
+
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
