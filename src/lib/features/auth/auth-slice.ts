@@ -36,7 +36,7 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     syncAuth: (state) => {
-      state.isAuthenticated = apiClient.auth.check();
+      state.isAuthenticated = apiClient.auth.isLoggedIn();
     },
     logout: (state) => {
       apiClient.auth.logout();
@@ -59,10 +59,18 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+      .addCase(registerUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload.user;
+      })
+      .addCase(registerUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

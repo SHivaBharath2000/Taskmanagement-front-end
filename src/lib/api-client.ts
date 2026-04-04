@@ -18,14 +18,9 @@ export interface Task {
   updatedAt: string;
 }
 
-export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: User;
-}
-
 const getHeaders = () => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  if (typeof window === 'undefined') return {};
+  const token = localStorage.getItem('token');
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -34,6 +29,19 @@ const getHeaders = () => {
 
 export const apiClient = {
   auth: {
+    login: async (email: string, pass: string) => {
+      const res = await fetch(`${BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass }),
+      });
+      if (!res.ok) throw new Error('Invalid login credentials');
+      const data = await res.json();
+      localStorage.setItem('token', data.accessToken);
+      localStorage.setItem('refresh_token', data.refreshToken);
+      return data;
+    },
+
     register: async (name: string, email: string, pass: string) => {
       const res = await fetch(`${BASE_URL}/auth/register`, {
         method: 'POST',
@@ -47,43 +55,37 @@ export const apiClient = {
       return data;
     },
 
-    login: async (email: string, pass: string) => {
-      const res = await fetch(`${BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: pass }),
-      });
-      if (!res.ok) throw new Error('Invalid credentials');
-      const data = await res.json();
-      localStorage.setItem('token', data.accessToken);
-      localStorage.setItem('refresh_token', data.refreshToken);
-      return data;
-    },
-
     logout: () => {
       localStorage.removeItem('token');
       localStorage.removeItem('refresh_token');
     },
 
-    check: () => !!localStorage.getItem('token'),
+    isLoggedIn: () => {
+      if (typeof window === 'undefined') return false;
+      return !!localStorage.getItem('token');
+    },
   },
 
   tasks: {
     list: async (status?: string) => {
-      const params = status && status !== 'all' ? `?status=${status}` : '';
-      const res = await fetch(`${BASE_URL}/tasks${params}`, { headers: getHeaders() });
-      if (!res.ok) throw new Error('Failed to load tasks');
+      const url = new URL(`${BASE_URL}/tasks`);
+      if (status && status !== 'all') {
+        url.searchParams.append('status', status);
+      }
+      
+      const res = await fetch(url.toString(), { headers: getHeaders() });
+      if (!res.ok) throw new Error('Could not load tasks');
       const data = await res.json();
       return Array.isArray(data) ? data : data.tasks || [];
     },
 
-    create: async (payload: { title: string; description?: string }) => {
+    create: async (task: { title: string; description?: string }) => {
       const res = await fetch(`${BASE_URL}/tasks`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ ...payload, status: 'TODO' }),
+        body: JSON.stringify({ ...task, status: 'TODO' }),
       });
-      if (!res.ok) throw new Error('Create failed');
+      if (!res.ok) throw new Error('Task creation failed');
       return res.json();
     },
 
@@ -93,7 +95,7 @@ export const apiClient = {
         headers: getHeaders(),
         body: JSON.stringify(updates),
       });
-      if (!res.ok) throw new Error('Update failed');
+      if (!res.ok) throw new Error('Task update failed');
       return res.json();
     },
 
@@ -102,7 +104,7 @@ export const apiClient = {
         method: 'DELETE',
         headers: getHeaders(),
       });
-      if (!res.ok) throw new Error('Delete failed');
+      if (!res.ok) throw new Error('Task deletion failed');
     },
 
     toggle: async (id: string) => {
@@ -110,7 +112,7 @@ export const apiClient = {
         method: 'PATCH',
         headers: getHeaders(),
       });
-      if (!res.ok) throw new Error('Toggle failed');
+      if (!res.ok) throw new Error('Failed to toggle task');
       return res.json();
     },
   },

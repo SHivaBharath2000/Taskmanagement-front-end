@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,14 +6,13 @@ import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, LayoutDashboard, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function Home() {
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (apiClient.isAuthenticated()) {
+    if (apiClient.auth.isLoggedIn()) {
       router.push("/dashboard");
     } else {
       setIsReady(true);
