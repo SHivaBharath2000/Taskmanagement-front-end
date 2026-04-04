@@ -16,7 +16,6 @@ import {
   TrendingUp,
   Clock,
   CheckCircle,
-  AlertCircle,
   Loader2
 } from "lucide-react";
 import { TaskItem } from "@/components/dashboard/task-item";
@@ -35,7 +34,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { fetchTasks } from "@/lib/features/tasks/tasks-slice";
 import { logout, checkAuth } from "@/lib/features/auth/auth-slice";
-import { Task } from "@/lib/api-client";
+import { Task, TaskStatus } from "@/lib/api-client";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -44,7 +43,7 @@ export default function DashboardPage() {
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterPriority, setFilterPriority] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<TaskStatus | "all">("all");
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -81,19 +80,18 @@ export default function DashboardPage() {
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            task.category.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPriority = filterPriority === "all" || task.priority === filterPriority;
-      return matchesSearch && matchesPriority;
+                            (task.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+      const matchesStatus = filterStatus === "all" || task.status === filterStatus;
+      return matchesSearch && matchesStatus;
     });
-  }, [tasks, searchQuery, filterPriority]);
+  }, [tasks, searchQuery, filterStatus]);
 
   const stats = useMemo(() => {
     return {
       total: tasks.length,
-      completed: tasks.filter(t => t.status === 'completed').length,
-      pending: tasks.filter(t => t.status === 'pending').length,
-      highPriority: tasks.filter(t => t.priority === "high" && t.status === 'pending').length,
+      todo: tasks.filter(t => t.status === 'TODO').length,
+      inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
+      done: tasks.filter(t => t.status === 'DONE').length,
     };
   }, [tasks]);
 
@@ -134,12 +132,12 @@ export default function DashboardPage() {
               </div>
            </div>
            <div className="bg-card p-4 rounded-xl border shadow-sm flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
-                <CheckCircle size={20} />
+              <div className="h-10 w-10 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center">
+                <Clock size={20} />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Done</p>
-                <p className="text-xl font-bold">{stats.completed}</p>
+                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">To Do</p>
+                <p className="text-xl font-bold">{stats.todo}</p>
               </div>
            </div>
            <div className="bg-card p-4 rounded-xl border shadow-sm flex items-center gap-4">
@@ -147,17 +145,17 @@ export default function DashboardPage() {
                 <Clock size={20} />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Pending</p>
-                <p className="text-xl font-bold">{stats.pending}</p>
+                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">In Progress</p>
+                <p className="text-xl font-bold">{stats.inProgress}</p>
               </div>
            </div>
            <div className="bg-card p-4 rounded-xl border shadow-sm flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
-                <AlertCircle size={20} />
+              <div className="h-10 w-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                <CheckCircle size={20} />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Urgent</p>
-                <p className="text-xl font-bold">{stats.highPriority}</p>
+                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Done</p>
+                <p className="text-xl font-bold">{stats.done}</p>
               </div>
            </div>
         </section>
@@ -166,7 +164,7 @@ export default function DashboardPage() {
           <div className="relative w-full md:max-w-md">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Search tasks, descriptions, or categories..." 
+              placeholder="Search tasks or descriptions..." 
               className="pl-10 h-10 bg-card"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -178,17 +176,17 @@ export default function DashboardPage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="flex-1 md:flex-none">
                   <Filter className="mr-2 h-4 w-4" /> 
-                  Filter {filterPriority !== "all" && `: ${filterPriority}`}
+                  Status {filterStatus !== "all" && `: ${filterStatus}`}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>By Priority</DropdownMenuLabel>
+                <DropdownMenuLabel>By Status</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={filterPriority} onValueChange={setFilterPriority}>
-                  <DropdownMenuRadioItem value="all">All Priorities</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="high">High Priority</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="medium">Medium Priority</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="low">Low Priority</DropdownMenuRadioItem>
+                <DropdownMenuRadioGroup value={filterStatus} onValueChange={(val) => setFilterStatus(val as TaskStatus | "all")}>
+                  <DropdownMenuRadioItem value="all">All Statuses</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="TODO">To Do</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="IN_PROGRESS">In Progress</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="DONE">Done</DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -244,14 +242,14 @@ export default function DashboardPage() {
               <div className="h-20 w-20 rounded-full bg-muted/20 flex items-center justify-center text-muted-foreground/30 mb-2">
                 <CheckCircle2 size={48} />
               </div>
-              <h3 className="text-xl font-semibold">All caught up!</h3>
+              <h3 className="text-xl font-semibold">All clear!</h3>
               <p className="text-muted-foreground max-w-xs">
-                {searchQuery || filterPriority !== "all" 
-                  ? "No tasks match your current filters. Try clearing them to see more." 
-                  : "You've finished all your tasks for today. Time to relax or create a new one!"}
+                {searchQuery || filterStatus !== "all" 
+                  ? "No tasks match your current filters." 
+                  : "You've finished everything. Start a new chapter today!"}
               </p>
-              {(searchQuery || filterPriority !== "all") && (
-                <Button variant="link" onClick={() => { setSearchQuery(""); setFilterPriority("all"); }}>
+              {(searchQuery || filterStatus !== "all") && (
+                <Button variant="link" onClick={() => { setSearchQuery(""); setFilterStatus("all"); }}>
                   Clear Filters
                 </Button>
               )}

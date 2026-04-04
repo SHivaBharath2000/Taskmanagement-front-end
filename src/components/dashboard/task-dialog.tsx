@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Task } from "@/lib/api-client";
+import { Task, TaskStatus } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
@@ -38,9 +38,7 @@ import { createTask, updateTask } from "@/lib/features/tasks/tasks-slice";
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
   description: z.string().optional(),
-  priority: z.enum(["low", "medium", "high"]),
-  category: z.string().min(1, "Category is required"),
-  dueDate: z.string().min(1, "Due date is required"),
+  status: z.enum(["TODO", "IN_PROGRESS", "DONE"]),
 });
 
 interface TaskDialogProps {
@@ -59,9 +57,7 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
     defaultValues: {
       title: "",
       description: "",
-      priority: "medium",
-      category: "General",
-      dueDate: "",
+      status: "TODO",
     },
   });
 
@@ -70,22 +66,18 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
   }, []);
 
   useEffect(() => {
-    if (mounted) {
+    if (mounted && open) {
       if (task) {
         form.reset({
           title: task.title,
           description: task.description || "",
-          priority: task.priority,
-          category: task.category,
-          dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "",
+          status: task.status,
         });
       } else {
         form.reset({
           title: "",
           description: "",
-          priority: "medium",
-          category: "General",
-          dueDate: new Date().toISOString().split('T')[0],
+          status: "TODO",
         });
       }
     }
@@ -153,52 +145,24 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="dueDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Due Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
             <FormField
               control={form.control}
-              name="category"
+              name="status"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Work, Personal, Health..." {...field} />
-                  </FormControl>
+                  <FormLabel>Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="TODO">To Do</SelectItem>
+                      <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                      <SelectItem value="DONE">Done</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

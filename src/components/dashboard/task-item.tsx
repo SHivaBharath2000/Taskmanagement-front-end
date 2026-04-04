@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit2, Trash2, Calendar, Tag, Loader2 } from "lucide-react";
+import { MoreVertical, Edit2, Trash2, Clock, CheckCircle, Loader2 } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -28,7 +28,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
   const dispatch = useAppDispatch();
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const isCompleted = task.status === 'completed';
+  const isCompleted = task.status === 'DONE';
 
   const handleToggle = async () => {
     setIsUpdating(true);
@@ -59,11 +59,17 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
     }
   };
 
-  const priorityColors = {
-    low: "bg-blue-100 text-blue-700 hover:bg-blue-100",
-    medium: "bg-orange-100 text-orange-700 hover:bg-orange-100",
-    high: "bg-red-100 text-red-700 hover:bg-red-100",
+  const statusColors = {
+    TODO: "bg-gray-100 text-gray-700 hover:bg-gray-100",
+    IN_PROGRESS: "bg-blue-100 text-blue-700 hover:bg-blue-100",
+    DONE: "bg-green-100 text-green-700 hover:bg-green-100",
   };
+
+  const StatusIcon = {
+    TODO: Clock,
+    IN_PROGRESS: Clock,
+    DONE: CheckCircle,
+  }[task.status];
 
   return (
     <Card className={cn(
@@ -91,26 +97,24 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
           )}>
             {task.title}
           </h3>
-          <Badge className={cn("capitalize text-[10px] px-2 py-0", priorityColors[task.priority])}>
-            {task.priority}
+          <Badge className={cn("capitalize text-[10px] px-2 py-0", statusColors[task.status])}>
+            {task.status.replace('_', ' ')}
           </Badge>
         </div>
         
-        <p className={cn(
-          "text-sm text-muted-foreground line-clamp-2",
-          isCompleted && "opacity-60"
-        )}>
-          {task.description}
-        </p>
+        {task.description && (
+          <p className={cn(
+            "text-sm text-muted-foreground line-clamp-2",
+            isCompleted && "opacity-60"
+          )}>
+            {task.description}
+          </p>
+        )}
         
         <div className="flex flex-wrap gap-4 pt-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            <span>{task.dueDate}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Tag className="h-3 w-3" />
-            <span>{task.category}</span>
+            <StatusIcon className="h-3 w-3" />
+            <span>Last updated: {new Date(task.updatedAt).toLocaleDateString()}</span>
           </div>
         </div>
       </div>

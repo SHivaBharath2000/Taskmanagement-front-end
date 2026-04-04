@@ -3,16 +3,16 @@ const API_BASE_URL = 'http://localhost:3000';
 const STORAGE_KEY_ACCESS_TOKEN = 'nexus_access_token';
 const STORAGE_KEY_REFRESH_TOKEN = 'nexus_refresh_token';
 
-export type TaskStatus = 'pending' | 'completed';
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
 
 export type Task = {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   status: TaskStatus;
-  priority: 'low' | 'medium' | 'high';
-  category: string;
-  dueDate: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type AuthResponse = {
@@ -21,7 +21,7 @@ export type AuthResponse = {
   user: {
     id: string;
     email: string;
-    name: string;
+    name: string | null;
   };
 };
 
@@ -40,8 +40,10 @@ export const apiClient = {
     });
     if (!res.ok) throw new Error('Registration failed');
     const data = await res.json();
-    localStorage.setItem(STORAGE_KEY_ACCESS_TOKEN, data.accessToken);
-    localStorage.setItem(STORAGE_KEY_REFRESH_TOKEN, data.refreshToken);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_ACCESS_TOKEN, data.accessToken);
+      localStorage.setItem(STORAGE_KEY_REFRESH_TOKEN, data.refreshToken);
+    }
     return data;
   },
 
@@ -53,13 +55,15 @@ export const apiClient = {
     });
     if (!res.ok) throw new Error('Login failed');
     const data = await res.json();
-    localStorage.setItem(STORAGE_KEY_ACCESS_TOKEN, data.accessToken);
-    localStorage.setItem(STORAGE_KEY_REFRESH_TOKEN, data.refreshToken);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_ACCESS_TOKEN, data.accessToken);
+      localStorage.setItem(STORAGE_KEY_REFRESH_TOKEN, data.refreshToken);
+    }
     return data;
   },
 
   refresh: async (): Promise<{ accessToken: string; refreshToken: string }> => {
-    const refreshToken = localStorage.getItem(STORAGE_KEY_REFRESH_TOKEN);
+    const refreshToken = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_REFRESH_TOKEN) : null;
     const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -67,20 +71,24 @@ export const apiClient = {
     });
     if (!res.ok) throw new Error('Refresh failed');
     const data = await res.json();
-    localStorage.setItem(STORAGE_KEY_ACCESS_TOKEN, data.accessToken);
-    localStorage.setItem(STORAGE_KEY_REFRESH_TOKEN, data.refreshToken);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_ACCESS_TOKEN, data.accessToken);
+      localStorage.setItem(STORAGE_KEY_REFRESH_TOKEN, data.refreshToken);
+    }
     return data;
   },
 
   logout: async () => {
-    const refreshToken = localStorage.getItem(STORAGE_KEY_REFRESH_TOKEN);
+    const refreshToken = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_REFRESH_TOKEN) : null;
     await fetch(`${API_BASE_URL}/auth/logout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
     });
-    localStorage.removeItem(STORAGE_KEY_ACCESS_TOKEN);
-    localStorage.removeItem(STORAGE_KEY_REFRESH_TOKEN);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY_ACCESS_TOKEN);
+      localStorage.removeItem(STORAGE_KEY_REFRESH_TOKEN);
+    }
   },
 
   isAuthenticated: () => {
@@ -88,22 +96,21 @@ export const apiClient = {
   },
 
   // Tasks
-  getTasks: async (filters: { page?: number; limit?: number; status?: string; priority?: string } = {}): Promise<Task[]> => {
+  getTasks: async (filters: { page?: number; limit?: number; status?: TaskStatus } = {}): Promise<Task[]> => {
     const query = new URLSearchParams(filters as any).toString();
     const res = await fetch(`${API_BASE_URL}/tasks?${query}`, {
       headers: getAuthHeaders(),
     });
     if (!res.ok) throw new Error('Failed to fetch tasks');
     const data = await res.json();
-    // Assuming the backend returns an array or an object with a data property
     return Array.isArray(data) ? data : data.tasks || [];
   },
 
-  createTask: async (taskData: Omit<Task, 'id' | 'status'>): Promise<Task> => {
+  createTask: async (taskData: { title: string; description?: string }): Promise<Task> => {
     const res = await fetch(`${API_BASE_URL}/tasks`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...taskData, status: 'pending' }),
+      body: JSON.stringify({ ...taskData, status: 'TODO' }),
     });
     if (!res.ok) throw new Error('Failed to create task');
     return res.json();

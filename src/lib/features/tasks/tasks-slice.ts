@@ -27,7 +27,7 @@ export const fetchTasks = createAsyncThunk(
 
 export const createTask = createAsyncThunk(
   'tasks/createTask',
-  async (taskData: Omit<Task, 'id' | 'status'>, { rejectWithValue }) => {
+  async (taskData: { title: string; description?: string }, { rejectWithValue }) => {
     try {
       return await apiClient.createTask(taskData);
     } catch (err: any) {
