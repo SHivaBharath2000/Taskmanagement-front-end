@@ -41,10 +41,13 @@ export default function RegisterPage() {
 
   useEffect(() => {
     dispatch(syncAuth());
+  }, [dispatch]);
+
+  useEffect(() => {
     if (isAuthenticated) {
-      router.push("/dashboard");
+      router.push("/login"); 
     }
-  }, [isAuthenticated, router, dispatch]);
+  }, [isAuthenticated, router]);
 
   useEffect(() => {
     if (error) {
@@ -58,8 +61,13 @@ export default function RegisterPage() {
 
   async function handleRegister(values: z.infer<typeof registerSchema>) {
     const result = await dispatch(registerUser(values));
+    
     if (registerUser.fulfilled.match(result)) {
-      router.push("/dashboard");
+      toast({
+        title: "Account created!",
+        description: "Please log in with your new credentials.",
+      });
+      router.push("/login");
     }
   }
 
