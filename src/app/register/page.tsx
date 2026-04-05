@@ -45,7 +45,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push("/login"); 
+      router.push("/dashboard"); 
     }
   }, [isAuthenticated, router]);
 

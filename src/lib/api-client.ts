@@ -50,16 +50,11 @@ export const apiClient = {
     },
 
     register: async (name: string, email: string, pass: string) => {
-      const data = await fetch(`${BASE_URL}/auth/register`, {
+      return await fetch(`${BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password: pass }),
       }).then(handleResponse);
-
-      localStorage.setItem('token', data.accessToken);
-      localStorage.setItem('refresh_token', data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      return data;
     },
 
     logout: () => {
