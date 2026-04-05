@@ -42,12 +42,28 @@ const tasksSlice = createSlice({
     builder
       .addCase(loadTasks.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(loadTasks.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload;
+        // Flexible extraction: handles array or object with items/tasks/data property
+        const payload = action.payload;
+        if (Array.isArray(payload)) {
+          state.items = payload;
+        } else if (payload && typeof payload === 'object') {
+          state.items = payload.tasks || payload.items || payload.data || [];
+        } else {
+          state.items = [];
+        }
+      })
+      .addCase(loadTasks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to load tasks';
       })
       .addCase(addTask.fulfilled, (state, action) => {
+        if (!Array.isArray(state.items)) {
+          state.items = [];
+        }
         state.items.unshift(action.payload);
       })
       .addCase(patchTask.fulfilled, (state, action) => {

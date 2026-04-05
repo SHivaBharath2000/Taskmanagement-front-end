@@ -37,6 +37,17 @@ const authSlice = createSlice({
   reducers: {
     syncAuth: (state) => {
       state.isAuthenticated = apiClient.auth.isLoggedIn();
+      // Try to sync user from localStorage if we saved it there
+      if (typeof window !== 'undefined') {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          try {
+            state.user = JSON.parse(userStr);
+          } catch (e) {
+            state.user = null;
+          }
+        }
+      }
     },
     logout: (state) => {
       apiClient.auth.logout();

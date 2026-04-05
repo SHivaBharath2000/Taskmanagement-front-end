@@ -8,188 +8,210 @@ import {
   Plus, Search, Filter, LogOut, CheckCircle2, 
   LayoutList, LayoutGrid, TrendingUp, Clock, CheckCircle, Loader2 
 } from "lucide-react";
+
 import { TaskItem } from "@/components/dashboard/task-item";
 import { TaskDialog } from "@/components/dashboard/task-dialog";
-import { 
-  DropdownMenu, DropdownMenuContent, DropdownMenuLabel, 
-  DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { loadTasks } from "@/lib/features/tasks/tasks-slice";
 import { logout, syncAuth } from "@/lib/features/auth/auth-slice";
-import { Task, TaskStatus } from "@/lib/api-client";
+import { Task } from "@/lib/api-client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { items: tasks, loading } = useAppSelector(s => s.tasks);
-  const { isAuthenticated, user } = useAppSelector(s => s.auth);
+  
+  // Get tasks and user data from Redux store
+  const { items: tasks, loading, error: tasksError } = useAppSelector((state) => state.tasks);
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
 
+  // Local state for UI (search, filters, and modals)
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<TaskStatus | "all">("all");
-  const [view, setView] = useState<"list" | "grid">("grid");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [filter, setFilter] = useState("all"); 
+  const [view, setView] = useState("grid");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
+  // Use toast for errors
+  const { toast } = useToast();
+
+  // Run once when component loads to sync auth
   useEffect(() => {
-    setMounted(true);
+    setIsMounted(true);
     dispatch(syncAuth());
   }, [dispatch]);
 
+  // If not logged in, send user to login page. Otherwise, load tasks.
   useEffect(() => {
-    if (mounted) {
+    if (isMounted) {
       if (!isAuthenticated) {
         router.push("/login");
       } else {
         dispatch(loadTasks());
       }
     }
-  }, [mounted, isAuthenticated, router, dispatch]);
+  }, [isMounted, isAuthenticated, router, dispatch]);
 
+  // Show toast if tasks fail to load
+  useEffect(() => {
+    if (tasksError) {
+      toast({
+        title: "Error loading tasks",
+        description: tasksError,
+        variant: "destructive",
+      });
+    }
+  }, [tasksError, toast]);
+
+  // Log out the user and redirect
   const handleLogout = () => {
     dispatch(logout());
     router.push("/login");
   };
 
-  const openEditor = (task?: Task) => {
-    setActiveTask(task || null);
-    setDialogOpen(true);
+  // Open the popup for creating or editing a task
+  const openTaskEditor = (task: Task | null = null) => {
+    setActiveTask(task);
+    setIsDialogOpen(true);
   };
 
+  // Logic to filter tasks based on search text and status
   const filteredTasks = useMemo(() => {
-    return tasks.filter(t => {
-      const matchText = t.title.toLowerCase().includes(search.toLowerCase()) || 
-                       (t.description?.toLowerCase().includes(search.toLowerCase()) ?? false);
-      const matchStatus = filter === "all" || t.status === filter;
-      return matchText && matchStatus;
+    // Safety check: ensure tasks is an array to avoid errors
+    const tasksArray = Array.isArray(tasks) ? tasks : [];
+
+    return tasksArray.filter((task) => {
+      const searchText = search.toLowerCase();
+      const taskTitle = task.title.toLowerCase();
+      const taskDesc = (task.description || "").toLowerCase();
+
+      // Check if search text matches title or description
+      const isMatch = taskTitle.includes(searchText) || taskDesc.includes(searchText);
+      
+      // Check if status matches the selected filter
+      const isStatusMatch = filter === "all" || task.status === filter;
+
+      return isMatch && isStatusMatch;
     });
   }, [tasks, search, filter]);
 
+  // Calculate stats for the dashboard cards
   const stats = {
-    total: tasks.length,
-    todo: tasks.filter(t => t.status === 'TODO').length,
-    progress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
-    done: tasks.filter(t => t.status === 'DONE').length,
+    total: Array.isArray(tasks) ? tasks.length : 0,
+    todo: Array.isArray(tasks) ? tasks.filter(t => t.status === 'TODO').length : 0,
+    progress: Array.isArray(tasks) ? tasks.filter(t => t.status === 'IN_PROGRESS').length : 0,
+    done: Array.isArray(tasks) ? tasks.filter(t => t.status === 'DONE').length : 0,
   };
 
-  if (!mounted) return null;
+  // Prevent server-side errors during initial render
+  if (!isMounted) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-body">
-      <header className="sticky top-0 z-40 w-full border-b bg-white/80 backdrop-blur-md">
-        <div className="container max-w-7xl mx-auto h-16 flex items-center justify-between px-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-primary rounded-lg shadow-sm">
-              <CheckCircle2 className="text-white w-5 h-5" />
-            </div>
-            <h1 className="text-lg font-bold text-slate-900 tracking-tight">Task System</h1>
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Top Navigation Bar */}
+      <header className="border-b bg-white p-4 sticky top-0 z-10">
+        <div className="container mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="text-blue-600" />
+            <h1 className="font-bold text-xl">Task Manager</h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-slate-500 hidden md:inline">
-              Hi, {user?.name || 'there'}
-            </span>
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
-              <LogOut className="w-5 h-5 text-slate-400" />
+            <p className="text-sm text-gray-600">Hi, {user?.name || 'User'}</p>
+            <Button variant="ghost" onClick={handleLogout}>
+              <LogOut size={20} className="text-gray-400" />
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 container max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+      <main className="container mx-auto p-6 space-y-6">
+        {/* Quick Stats Cards */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: 'Total', val: stats.total, icon: LayoutList, color: 'text-primary' },
-            { label: 'To Do', val: stats.todo, icon: Clock, color: 'text-slate-500' },
-            { label: 'Active', val: stats.progress, icon: TrendingUp, color: 'text-blue-500' },
-            { label: 'Done', val: stats.done, icon: CheckCircle, color: 'text-green-500' }
-          ].map((s, i) => (
-            <div key={i} className="bg-white p-5 rounded-xl border shadow-sm flex items-center gap-4">
-              <div className={cn("p-2.5 rounded-full bg-slate-50", s.color)}>
-                <s.icon size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{s.label}</p>
-                <p className="text-xl font-bold text-slate-900">{s.val}</p>
-              </div>
-            </div>
-          ))}
+          <div className="bg-white p-4 rounded-xl border shadow-sm">
+            <p className="text-xs text-gray-500 uppercase font-bold">Total Tasks</p>
+            <p className="text-2xl font-bold">{stats.total}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border shadow-sm">
+            <p className="text-xs text-gray-500 uppercase font-bold text-green-600">Completed</p>
+            <p className="text-2xl font-bold">{stats.done}</p>
+          </div>
         </section>
-
-        <section className="flex flex-col md:flex-row items-center gap-4 justify-between bg-white p-4 rounded-xl border shadow-sm">
-          <div className="relative w-full md:max-w-sm">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+        
+        {/* Search bar and Filters */}
+        <div className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl border shadow-sm items-center">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
             <Input 
-              placeholder="Search your tasks..." 
-              className="pl-10 bg-slate-50 border-none focus-visible:ring-1"
+              placeholder="Search tasks..." 
+              className="pl-10"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex-1 md:w-40 justify-between">
-                  <span className="flex items-center gap-2"><Filter size={14} /> {filter === 'all' ? 'Status' : filter}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48">
-                <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={filter} onValueChange={(v) => setFilter(v as any)}>
-                  <DropdownMenuRadioItem value="all">All Tasks</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="TODO">To Do</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="IN_PROGRESS">In Progress</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="DONE">Done</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <div className="hidden sm:flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
-              <Button size="icon" variant={view === 'list' ? 'white' : 'ghost'} className="h-8 w-8" onClick={() => setView('list')}>
-                <LayoutList size={16} />
+          
+          <div className="flex items-center gap-2 border rounded-lg p-1 bg-slate-50 w-full md:w-auto overflow-x-auto">
+            {['all', 'TODO', 'IN_PROGRESS', 'DONE'].map((f) => (
+              <Button 
+                key={f}
+                variant={filter === f ? "default" : "ghost"} 
+                size="sm" 
+                className="h-8 text-xs whitespace-nowrap"
+                onClick={() => setFilter(f)}
+              >
+                {f === 'all' ? 'All' : f.replace('_', ' ')}
               </Button>
-              <Button size="icon" variant={view === 'grid' ? 'white' : 'ghost'} className="h-8 w-8" onClick={() => setView('grid')}>
-                <LayoutGrid size={16} />
-              </Button>
-            </div>
+            ))}
+          </div>
 
-            <Button onClick={() => openEditor()} className="flex-1 md:flex-none">
-              <Plus size={18} className="mr-1" /> New Task
+          <div className="flex items-center gap-2 border rounded-lg p-1 bg-slate-50">
+            <Button 
+              variant={view === "grid" ? "default" : "ghost"} 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => setView("grid")}
+            >
+              <LayoutGrid size={16} />
+            </Button>
+            <Button 
+              variant={view === "list" ? "default" : "ghost"} 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => setView("list")}
+            >
+              <LayoutList size={16} />
             </Button>
           </div>
-        </section>
+          
+          <Button onClick={() => openTaskEditor()} className="w-full md:w-auto">
+            <Plus size={18} className="mr-2" /> New Task
+          </Button>
+        </div>
 
-        <section className="min-h-[300px]">
+        {/* Task List Section */}
+        <section>
           {loading ? (
-            <div className="flex flex-col items-center justify-center h-64 text-slate-400 gap-3">
-              <Loader2 className="animate-spin" size={32} />
-              <p className="text-sm font-medium">Updating list...</p>
-            </div>
+            <div className="text-center py-20"><Loader2 className="animate-spin mx-auto text-blue-500" /></div>
           ) : filteredTasks.length > 0 ? (
-            <div className={cn(
-              "grid gap-5",
-              view === "grid" ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"
-            )}>
-              {filteredTasks.map(t => (
-                <TaskItem key={t.id} task={t} onEdit={() => openEditor(t)} />
+            <div className={view === "grid" ? "grid md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-4"}>
+              {filteredTasks.map((task) => (
+                <TaskItem key={task.id} task={task} onEdit={() => openTaskEditor(task)} />
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-80 text-center space-y-3 bg-white border border-dashed rounded-2xl">
-              <div className="bg-slate-50 p-4 rounded-full text-slate-300"><CheckCircle2 size={40} /></div>
-              <h3 className="font-semibold text-slate-900">No tasks found</h3>
-              <p className="text-sm text-slate-500 max-w-[240px]">
-                {search || filter !== 'all' ? "Try adjusting your filters to find what you need." : "Time to start something new. Create your first task!"}
-              </p>
+            <div className="text-center py-20 border-2 border-dashed rounded-xl text-gray-400 bg-white">
+              <p>No tasks found.</p>
             </div>
           )}
         </section>
       </main>
 
-      <TaskDialog open={dialogOpen} onOpenChange={setDialogOpen} task={activeTask} />
+      {/* Popup Dialog for Adding/Editing Tasks */}
+      <TaskDialog 
+        open={isDialogOpen} 
+        onOpenChange={setIsDialogOpen} 
+        task={activeTask} 
+      />
     </div>
   );
 }

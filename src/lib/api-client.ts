@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
 
@@ -45,6 +45,7 @@ export const apiClient = {
       
       localStorage.setItem('token', data.accessToken);
       localStorage.setItem('refresh_token', data.refreshToken);
+      localStorage.setItem('user', JSON.stringify(data.user));
       return data;
     },
 
@@ -57,12 +58,14 @@ export const apiClient = {
 
       localStorage.setItem('token', data.accessToken);
       localStorage.setItem('refresh_token', data.refreshToken);
+      localStorage.setItem('user', JSON.stringify(data.user));
       return data;
     },
 
     logout: () => {
       localStorage.removeItem('token');
       localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
     },
 
     isLoggedIn: () => {
